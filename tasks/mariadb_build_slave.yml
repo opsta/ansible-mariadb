@@ -1,5 +1,5 @@
 ---
-- block: # Prepare .my.cnf file
+- block: # Prepare mariadb configuration
   - name: Copy .my.cnf to root user
     template:
       src: my.cnf.j2
@@ -7,6 +7,16 @@
       owner: root
       group: root
       mode: 0400
+
+  - name: Change bind address to listen all
+    lineinfile:
+      dest: "{{ mariadb_mycnf_path }}"
+      regexp: '^bind-address'
+      line: "bind-address = 0.0.0.0"
+      insertafter: '^[mysqld]'
+    notify: Restart MariaDB Service
+
+  - meta: flush_handlers
 
 
 - block: # Prepare master
@@ -22,6 +32,27 @@
       dest: "{{ mariadb_tmp_local_ssh_public_key_filepath }}"
       flat: yes
     when: "'mariadb-master' in group_names"
+
+  - name: Create replication user
+    mysql_user:
+      name: "{{ mariadb_replicate_username }}"
+      password: "{{ mariadb_replicate_password }}"
+      host: "{{ mariadb_replicate_network | default('%') }}"
+      state: "present"
+      priv: "*.*:REPLICATION SLAVE"
+    when: "'mariadb-master' in group_names"
+
+  - name: Change to random server id on master
+    lineinfile:
+      dest: "{{ mariadb_mycnf_path }}"
+      regexp: '^(server-id|#server-id)'
+      line: "server-id = {{ 1000000 | random(start=100) }}"
+      state: "present"
+      insertbefore: '^[mysqld]'
+    when: "'mariadb-master' in group_names"
+    notify: Restart MariaDB Service
+
+  - meta: flush_handlers
 
 
 - block: # Prepare slave
