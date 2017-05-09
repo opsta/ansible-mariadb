@@ -38,3 +38,19 @@ mariadb_root_password: CHANGEME
 mariadb_replicate_username: repl
 mariadb_replicate_password: CHANGEME
 mariadb_decompress_memory: 1G
+
+# Sample to add users
+# mariadb_users:
+#   - username: user1
+#     password: pass1
+#     host: localhost
+#     priv: db1.*:ALL
+#   - username: user2
+#     password: pass2
+#     host: '%'
+#     priv: *.*:ALL
+
+# Sample to create databases
+# mariadb_databases:
+#   - db1
+#   - db2
