@@ -1,4 +1,12 @@
 ---
+- name: Copy .my.cnf to root user
+  template:
+    src: my.cnf.j2
+    dest: "{{ mariadb_root_mycnf_filepath }}"
+    owner: root
+    group: root
+    mode: 0400
+
 - name: Configure binary log format
   ini_file:
     path: "{{ mariadb_mycnf_path }}"
