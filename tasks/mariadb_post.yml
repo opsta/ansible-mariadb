@@ -1,4 +1,14 @@
 ---
+- name: Configure binary log format
+  ini_file:
+    path: "{{ mariadb_mycnf_path }}"
+    section: mysqld
+    option: binlog_format
+    value: "{{ mariadb_binlog_format }}"
+  notify: Restart MariaDB Service
+  tags:
+    - mariadb-config
+
 - name: Create databases
   mysql_db:
     name: "{{ item }}"
