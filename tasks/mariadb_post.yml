@@ -1,15 +1,37 @@
 ---
-- name: Grant access to the DB
+- name: Copy .my.cnf to root user
+  template:
+    src: my.cnf.j2
+    dest: "{{ mariadb_root_mycnf_filepath }}"
+    owner: root
+    group: root
+    mode: 0400
+
+- name: Configure binary log format
+  ini_file:
+    path: "{{ mariadb_mycnf_path }}"
+    section: mysqld
+    option: binlog_format
+    value: "{{ mariadb_binlog_format }}"
+  notify: Restart MariaDB Service
+  tags:
+    - mariadb-config
+
+- name: Create databases
+  mysql_db:
+    name: "{{ item }}"
+  with_items: "{{ mariadb_databases }}"
+  when: mariadb_databases is defined
+
+- name: Create users
   mysql_user:
     login_user: "root"
     login_password: "{{ mariadb_root_password }}"
     login_host: "127.0.0.1"
-    name: "{{ mariadb_user_name }}"
-    password: "{{ mariadb_user_password }}"
-    host: "{{ item }}"
+    name: "{{ item.username }}"
+    password: "{{ item.password }}"
+    host: "{{ item.host }}"
     state: "present"
-    priv: "*.*:ALL"
-  with_items:
-    - "localhost"
-    - "%"
-  when: "mariadb_user_name is defined and mariadb_user_password is defined"
+    priv: "{{ item.priv }}"
+  with_items: "{{ mariadb_users }}"
+  when: mariadb_users is defined

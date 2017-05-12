@@ -32,9 +32,29 @@ mariadb_ssh_key_filepath: /root/.ssh/id_rsa
 mariadb_ssh_public_key_filepath: "{{ mariadb_ssh_key_filepath }}.pub"
 mariadb_tmp_local_ssh_public_key_filepath: /tmp/mariadb-id_rsa.pub
 
+# Set binlog format (row, mixed, statement)
+# https://mariadb.com/kb/en/mariadb/binary-log-formats
+mariadb_binlog_format: mixed
+
 mariadb_build_slave: false
 mariadb_slave_replication: true
 mariadb_root_password: CHANGEME
 mariadb_replicate_username: repl
 mariadb_replicate_password: CHANGEME
 mariadb_decompress_memory: 1G
+
+# Sample to add users
+# mariadb_users:
+#   - username: user1
+#     password: pass1
+#     host: localhost
+#     priv: db1.*:ALL
+#   - username: user2
+#     password: pass2
+#     host: '%'
+#     priv: *.*:ALL
+
+# Sample to create databases
+# mariadb_databases:
+#   - db1
+#   - db2
