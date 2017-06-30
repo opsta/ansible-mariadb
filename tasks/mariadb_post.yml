@@ -7,6 +7,14 @@
     group: root
     mode: 0400
 
+- name: Change bind address to listen all
+  ini_file:
+    path: "{{ mariadb_mycnf_path }}"
+    section: mysqld
+    option: bind-address
+    value: "0.0.0.0"
+  notify: Restart MariaDB Service
+
 - name: Configure binary log format
   ini_file:
     path: "{{ mariadb_mycnf_path }}"
