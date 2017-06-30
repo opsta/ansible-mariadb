@@ -7,15 +7,66 @@
     group: root
     mode: 0400
 
-- name: Configure binary log format
-  ini_file:
-    path: "{{ mariadb_mycnf_path }}"
-    section: mysqld
-    option: binlog_format
-    value: "{{ mariadb_binlog_format }}"
-  notify: Restart MariaDB Service
+- block: # Configure MariaDB
+  - name: Configure binary log format
+    ini_file:
+      path: "{{ mariadb_mycnf_path }}"
+      section: mysqld
+      option: binlog_format
+      value: "{{ mariadb_binlog_format }}"
+    notify: Restart MariaDB Service
+
+  - name: Change bind-address
+    ini_file:
+      path: "{{ mariadb_mycnf_path }}"
+      section: mysqld
+      option: bind-address
+      value: "{{ mariadb_bind_address }}"
+    notify: Restart MariaDB Service
+
+  - name: Change client default character set
+    ini_file:
+      path: "{{ mariadb_mycnf_path }}"
+      section: client
+      option: default-character-set
+      value: "{{ mariadb_character_set }}"
+    notify: Restart MariaDB Service
+
+  - name: Change mysql default character set
+    ini_file:
+      path: "{{ mariadb_mycnf_path }}"
+      section: mysql
+      option: default-character-set
+      value: "{{ mariadb_character_set }}"
+    notify: Restart MariaDB Service
+
+  - name: Change mysqld character set server
+    ini_file:
+      path: "{{ mariadb_mycnf_path }}"
+      section: mysqld
+      option: character-set-server
+      value: "{{ mariadb_character_set }}"
+    notify: Restart MariaDB Service
+
+  - name: Change mysqld init-connect
+    ini_file:
+      path: "{{ mariadb_mycnf_path }}"
+      section: mysqld
+      option: init-connect
+      value: "'SET NAMES {{ mariadb_character_set }}'"
+    notify: Restart MariaDB Service
+
+  - name: Change mysqld collation-server
+    ini_file:
+      path: "{{ mariadb_mycnf_path }}"
+      section: mysqld
+      option: collation-server
+      value: "{{ mariadb_collation_server }}"
+    notify: Restart MariaDB Service
+
   tags:
     - mariadb-config
+
 
 - name: Create databases
   mysql_db:

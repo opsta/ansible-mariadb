@@ -36,6 +36,10 @@ mariadb_tmp_local_ssh_public_key_filepath: /tmp/mariadb-id_rsa.pub
 # https://mariadb.com/kb/en/mariadb/binary-log-formats
 mariadb_binlog_format: mixed
 
+mariadb_bind_address: 0.0.0.0
+mariadb_character_set: utf8
+mariadb_collation_server: utf8_unicode_ci
+
 mariadb_build_slave: false
 mariadb_slave_replication: true
 mariadb_root_password: CHANGEME
