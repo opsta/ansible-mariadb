@@ -51,6 +51,18 @@
     when: "'mariadb-master' in group_names"
     notify: Restart MariaDB Service
 
+  - name: Enable binlog on master (for MySQL version >= 5.7)
+    ini_file:
+      path: "{{ mariadb_mycnf_path }}"
+      section: mysqld
+      option: log_bin
+      value: ""
+    when: 
+      - mariadb_server_package_name == 'mysql-server' 
+      - mariadb_mysql_version >= 'mysql-5.7'
+      - "'mariadb-master' in group_names"
+    notify: Restart MariaDB Service
+
   - meta: flush_handlers
 
 
