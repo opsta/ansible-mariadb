@@ -31,6 +31,13 @@
 
 
 - block: # Prepare MySQL repository
+  - name: Add MySQL repository key
+    apt_key:
+      keyserver: "{{ mariadb_apt_key_server }}"
+      id: "{{ mariadb_mysql_apt_key_id }}"
+      state: present
+    when: mariadb_server_package_name == 'mysql-server'
+    
   - name: Set MySQL version before installing
     debconf:
       name: mysql-apt-config

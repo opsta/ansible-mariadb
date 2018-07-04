@@ -13,6 +13,7 @@ mariadb_service_group: mysql
 mariadb_deb_repository: "deb [arch=amd64,i386,ppc64el] http://mirrors.bestthaihost.com/mariadb/repo/10.1/ubuntu {{ ansible_distribution_release }} main"
 mariadb_apt_key_server: hkp://keyserver.ubuntu.com:80
 mariadb_apt_key_id: "0xF1656F24C74CD1D8"
+mariadb_mysql_apt_key_id: "5072E1F5"
 
 mariadb_mysql_apt_deb_filename: mysql-apt-config_0.8.0-1_all.deb
 mariadb_mysql_apt_deb: "https://dev.mysql.com/get/{{ mariadb_mysql_apt_deb_filename }}"
