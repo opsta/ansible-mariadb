@@ -1,8 +1,6 @@
 ---
 - name: Install MariaDB and Percona ExtraBackup
   apt:
-     pkg: "{{ item }}"
+     pkg: "{{ mariadb_packages }}"
      state: latest
      update_cache: yes
-  with_items:
-    - "{{ mariadb_packages }}"
