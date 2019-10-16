@@ -36,7 +36,7 @@
       keyserver: "{{ mariadb_apt_key_server }}"
       id: "{{ mariadb_mysql_apt_key_id }}"
       state: present
-    
+
   - name: Set MySQL version before installing
     debconf:
       name: mysql-apt-config
@@ -52,7 +52,7 @@
   - name: Install MySQL apt repository
     apt:
       deb: "{{ mariadb_mysql_apt_deb_target_path }}"
-  
+
   when: mariadb_server_package_name == 'mysql-server'
 
 

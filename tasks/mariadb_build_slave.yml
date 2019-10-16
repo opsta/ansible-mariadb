@@ -1,13 +1,5 @@
 ---
 - block: # Prepare mariadb configuration
-  - name: Copy .my.cnf to root user
-    template:
-      src: my.cnf.j2
-      dest: "{{ mariadb_root_mycnf_filepath }}"
-      owner: root
-      group: root
-      mode: 0400
-
   - name: Change bind address to listen all
     ini_file:
       path: "{{ mariadb_mycnf_path }}"
@@ -24,14 +16,12 @@
     shell: ssh-keygen -f "{{ mariadb_ssh_key_filepath }}" -q -N ""
     args:
       creates: "{{ mariadb_ssh_key_filepath }}"
-    when: "'mariadb-master' in group_names"
 
   - name: Copy master public key to local machine
     fetch:
       src: "{{ mariadb_ssh_public_key_filepath }}"
       dest: "{{ mariadb_tmp_local_ssh_public_key_filepath }}"
       flat: yes
-    when: "'mariadb-master' in group_names"
 
   - name: Create replication user
     mysql_user:
@@ -40,7 +30,6 @@
       host: "{{ mariadb_replicate_network | default('%') }}"
       state: "present"
       priv: "*.*:REPLICATION SLAVE"
-    when: "'mariadb-master' in group_names"
 
   - name: Change to random server id on master
     ini_file:
@@ -48,7 +37,6 @@
       section: mysqld
       option: server-id
       value: "{{ 1000000 | random(start=100) }}"
-    when: "'mariadb-master' in group_names"
     notify: Restart MariaDB Service
 
   - name: Enable binlog on master (for MySQL version >= 5.7)
@@ -57,13 +45,13 @@
       section: mysqld
       option: log_bin
       value: ""
-    when: 
-      - mariadb_server_package_name == 'mysql-server' 
+    when:
+      - mariadb_server_package_name == 'mysql-server'
       - mariadb_mysql_version >= 'mysql-5.7'
-      - "'mariadb-master' in group_names"
     notify: Restart MariaDB Service
 
   - meta: flush_handlers
+  when: "'mariadb-master' in group_names"
 
 
 - block: # Prepare slave
@@ -71,27 +59,24 @@
     service:
       name: "{{ mariadb_service_name }}"
       state: stopped
-    when: "'mariadb-slave' in group_names"
 
   - name: Delete all file in {{ mariadb_data_path }} on slave (You can ignore error)
     file:
       path: "{{ mariadb_data_path }}"
       state: absent
-    when: "'mariadb-slave' in group_names"
     ignore_errors: yes
 
   - name: Create {{ mariadb_data_path }} on slave
     file:
       path: "{{ mariadb_data_path }}"
       state: directory
-    when: "'mariadb-slave' in group_names"
 
   - name: Copy master public key to slave
     authorized_key:
       user: root
       key: "{{ lookup('file', '{{ mariadb_tmp_local_ssh_public_key_filepath }}') }}"
       state: present
-    when: "'mariadb-slave' in group_names"
+  when: "'mariadb-slave' in group_names"
 
 
 - block: # Transfer data and configuration files
@@ -104,7 +89,6 @@
       'xbstream -x -C {{ mariadb_data_path }}'"
     async: 3600
     poll: 0
-    when: "'mariadb-master' in group_names"
     with_items: "{{ groups['mariadb-slave'] }}"
     register: mariadb_copy_to_slave
 
@@ -114,13 +98,12 @@
     register: mariadb_copy_to_slave_result
     until: mariadb_copy_to_slave_result.finished
     retries: 720
-    when: "'mariadb-master' in group_names"
 
   - name: Copy mysql configuration file from master to slave
     shell: "scp -r {{ mariadb_etc_path }}/*
       {{ hostvars[item]['ansible_host'] }}:{{ mariadb_etc_path }}/"
-    when: "'mariadb-master' in group_names"
     with_items: "{{ groups['mariadb-slave'] }}"
+  when: "'mariadb-master' in group_names"
 
 
 - block: # Prepare data files
@@ -128,7 +111,6 @@
     shell: "innobackupex --decompress {{ mariadb_data_path }}"
     async: 7200
     poll: 0
-    when: "'mariadb-slave' in group_names"
     register: mariadb_slave_decompress
 
   - name: Check if decompress is finish
@@ -137,14 +119,12 @@
     register: mariadb_slave_decompress_result
     until: mariadb_slave_decompress_result.finished
     retries: 1440
-    when: "'mariadb-slave' in group_names"
 
   - name: Apply log database files
     shell: "innobackupex --apply-log --use-memory {{ mariadb_decompress_memory }}
       {{ mariadb_data_path }}"
     async: 3600
     poll: 0
-    when: "'mariadb-slave' in group_names"
     register: mariadb_slave_apply_log
 
   - name: Check if apply log is finish
@@ -153,7 +133,6 @@
     register: mariadb_slave_apply_log_result
     until: mariadb_slave_apply_log_result.finished
     retries: 720
-    when: "'mariadb-slave' in group_names"
 
   - name: Change owner on MariaDB data files
     file:
@@ -162,7 +141,7 @@
       group: "{{ mariadb_service_group }}"
       recurse: yes
       state: directory
-    when: "'mariadb-slave' in group_names"
+  when: "'mariadb-slave' in group_names"
 
 
 - block: # Configure slave
@@ -172,7 +151,6 @@
       section: mysqld
       option: server-id
       value: "{{ 1000000 | random(start=100) }}"
-    when: "'mariadb-slave' in group_names"
 
   - name: Change innodb-buffer-pool-size
     ini_file:
@@ -180,23 +158,19 @@
       section: mysqld
       option: innodb-buffer-pool-size
       value: "{{ mariadb_innodb_buffer_pool_size }}"
-    when: "'mariadb-slave' in group_names and
-      mariadb_innodb_buffer_pool_size is defined"
+    when: "mariadb_innodb_buffer_pool_size is defined"
 
   - name: Start MariaDB server on slave
     service:
       name: "{{ mariadb_service_name }}"
       state: started
-    when: "'mariadb-slave' in group_names"
 
   - name: Get master log filename
     shell: "cat {{ mariadb_data_path }}/xtrabackup_binlog_info | head -1 | awk '{print $1}'"
-    when: "'mariadb-slave' in group_names"
     register: mariadb_master_log_filename
 
   - name: Get master log position
     shell: "cat {{ mariadb_data_path }}/xtrabackup_binlog_info | head -1 | awk '{print $2}'"
-    when: "'mariadb-slave' in group_names"
     register: mariadb_master_log_position
 
   - name: Stop slave
@@ -204,7 +178,6 @@
       mode: stopslave
       login_user: root
       login_password: "{{ mariadb_root_password }}"
-    when: "'mariadb-slave' in group_names"
 
   - name: Configure slave to sync from master
     mysql_replication:
@@ -216,7 +189,7 @@
       master_password: "{{ mariadb_replicate_password }}"
       master_log_file: "{{ mariadb_master_log_filename.stdout }}"
       master_log_pos: "{{ mariadb_master_log_position.stdout }}"
-    when: "'mariadb-slave' in group_names and mariadb_slave_replication"
+    when: "mariadb_slave_replication | bool"
     with_items: "{{ groups['mariadb-master'] }}"
 
   - name: Start slave
@@ -224,10 +197,10 @@
       mode: startslave
       login_user: root
       login_password: "{{ mariadb_root_password }}"
-    when: "'mariadb-slave' in group_names and mariadb_slave_replication"
-
+    when: "mariadb_slave_replication | bool"
+  when: "'mariadb-slave' in group_names"
 
 - block: # Clean compress files
   - name: Delete all .qp compress files
     shell: "find {{ mariadb_data_path }} -name '*.qp' | xargs rm -rf"
-    when: "'mariadb-slave' in group_names"
+  when: "'mariadb-slave' in group_names"
