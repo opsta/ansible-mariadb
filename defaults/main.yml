@@ -2,10 +2,11 @@
 mariadb_server_package_name: mariadb-server
 mariadb_packages:
   - "{{ mariadb_server_package_name }}"
-  - "{{ mariadb_build_slave | bool | ternary('percona-xtrabackup-24', '') }}"
   - "{{ ansible_python_version | default('3') is version('3', '<') | ternary('python-mysqldb', 'python3-pymysql') }}"
   - qpress
   - mytop
+mariadb_backup_packages:
+  - percona-xtrabackup-24
 mariadb_service_name: mysql
 mariadb_service_user: mysql
 mariadb_service_group: mysql
