@@ -6,12 +6,14 @@ mariadb_packages:
   - qpress
   - mytop
 mariadb_backup_packages:
-  - percona-xtrabackup-24
+  - "{{ mariadb_version is version('10.3', '<') | ternary('percona-xtrabackup-24', 'mariadb-backup') }}"
+mariadb_backup_binary: "{{ mariadb_version is version('10.3', '<') | ternary('innobackupex', 'mariabackup') }}"
 mariadb_service_name: mysql
 mariadb_service_user: mysql
 mariadb_service_group: mysql
 
-mariadb_deb_repository: "deb [arch=amd64] http://sgp1.mirrors.digitalocean.com/mariadb/repo/10.3/ubuntu {{ ansible_distribution_release }} main"
+mariadb_version: 10.3
+mariadb_deb_repository: "deb [arch=amd64] http://sgp1.mirrors.digitalocean.com/mariadb/repo/{{ mariadb_version }}/ubuntu {{ ansible_distribution_release }} main"
 mariadb_apt_key_server: hkp://keyserver.ubuntu.com:80
 mariadb_apt_key_id: "0xF1656F24C74CD1D8"
 mariadb_mysql_apt_key_id: "5072E1F5"
@@ -54,6 +56,7 @@ mariadb_root_password: CHANGEME
 mariadb_replicate_username: repl
 mariadb_replicate_password: CHANGEME
 mariadb_decompress_memory: 1G
+mariadb_slave_port: "{{ ansible_port | default(22) }}"
 
 # Sample to add users
 # mariadb_users:

@@ -82,11 +82,11 @@
 - block: # Transfer data and configuration files
 
   - name: Copy file from master to slave
-    shell: "innobackupex --user=root --password={{ mariadb_root_password }}
-      --compress --compress-threads=8 --stream=xbstream --parallel=4 ./ |
-      ssh -q -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=3
+    shell: "{{ mariadb_backup_binary }} --user=root --password={{ mariadb_root_password }}
+      --compress --compress-threads=8 --stream=xbstream --parallel=4 {{ (mariadb_backup_binary == 'mariabackup') | ternary('--backup', './') }} |
+      ssh -p {{ mariadb_slave_port }} -q -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=3
       {{ hostvars[item]['ansible_host'] }}
-      'xbstream -x -C {{ mariadb_data_path }}'"
+      '{{ (mariadb_backup_binary == 'mariabackup') | ternary('mbstream', 'xbstream') }} -x -C {{ mariadb_data_path }}'"
     async: 3600
     poll: 0
     with_items: "{{ groups['mariadb-slave'] }}"
@@ -100,7 +100,7 @@
     retries: 720
 
   - name: Copy mysql configuration file from master to slave
-    shell: "scp -r {{ mariadb_etc_path }}/*
+    shell: "scp -P {{ mariadb_slave_port }} -r {{ mariadb_etc_path }}/*
       {{ hostvars[item]['ansible_host'] }}:{{ mariadb_etc_path }}/"
     with_items: "{{ groups['mariadb-slave'] }}"
   when: "'mariadb-master' in group_names"
@@ -108,7 +108,7 @@
 
 - block: # Prepare data files
   - name: Decompress database files
-    shell: "innobackupex --decompress {{ mariadb_data_path }}"
+    shell: "{{ mariadb_backup_binary }} --decompress --remove-original --target-dir={{ mariadb_data_path }}"
     async: 7200
     poll: 0
     register: mariadb_slave_decompress
@@ -121,8 +121,8 @@
     retries: 1440
 
   - name: Apply log database files
-    shell: "innobackupex --apply-log --use-memory {{ mariadb_decompress_memory }}
-      {{ mariadb_data_path }}"
+    shell: "{{ mariadb_backup_binary }} {{ (mariadb_backup_binary == 'mariabackup') | ternary('--prepare', '--apply-log') }}
+      --use-memory {{ mariadb_decompress_memory }} --target-dir={{ mariadb_data_path }}"
     async: 3600
     poll: 0
     register: mariadb_slave_apply_log
@@ -198,9 +198,4 @@
       login_user: root
       login_password: "{{ mariadb_root_password }}"
     when: "mariadb_slave_replication | bool"
-  when: "'mariadb-slave' in group_names"
-
-- block: # Clean compress files
-  - name: Delete all .qp compress files
-    shell: "find {{ mariadb_data_path }} -name '*.qp' | xargs rm -rf"
   when: "'mariadb-slave' in group_names"
